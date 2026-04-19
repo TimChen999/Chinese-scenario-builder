@@ -115,3 +115,45 @@ async def test_filter_batch_parallel(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_filter_batch_empty() -> None:
     """An empty input list returns an empty list without any LLM call."""
     assert await filter_images([]) == []
+
+
+@pytest.mark.asyncio
+async def test_filter_batch_demotes_per_image_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One bad image must not abort the whole batch.
+
+    Regression test: ``filter_images`` previously called
+    ``asyncio.gather`` without ``return_exceptions=True``, so a
+    single timeout (transient network blip, slow vision call, etc.)
+    would propagate up and kill an entire generation job even if the
+    other images filtered fine. We now demote per-image failures to
+    a ``keep=False`` verdict carrying the error detail, leaving the
+    orchestrator's broaden-and-retry path to handle the case where
+    too many failed.
+    """
+    call_index = {"n": 0}
+
+    async def fake_generate_text(**_kwargs):
+        # Even calls succeed with a real verdict, odd calls raise the
+        # same kind of error a Gemini timeout would surface as inside
+        # filter_image (FilterError wraps GeminiError).
+        i = call_index["n"]
+        call_index["n"] += 1
+        if i % 2 == 0:
+            return json.dumps({"keep": True, "reason": "looks good"})
+        raise filter_mod._gemini.GeminiError("timeout", "Gemini call exceeded 30.0s")
+
+    monkeypatch.setattr(filter_mod._gemini, "generate_text", fake_generate_text)
+
+    images = [_make_image(f"img{i}") for i in range(4)]
+    verdicts = await filter_images(images, concurrency=4)
+
+    # Order preserved + one verdict per input.
+    assert [v.image for v in verdicts] == images
+
+    # Even indices (0, 2) succeeded; odd indices (1, 3) were demoted.
+    assert verdicts[0].keep is True and verdicts[0].reason == "looks good"
+    assert verdicts[1].keep is False and "filter failed" in verdicts[1].reason
+    assert verdicts[2].keep is True and verdicts[2].reason == "looks good"
+    assert verdicts[3].keep is False and "Gemini call exceeded" in verdicts[3].reason

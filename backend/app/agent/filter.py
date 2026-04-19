@@ -31,7 +31,12 @@ FILTER_TEMPERATURE = 0.0
 # auto-disabled by ``_gemini.generate_text`` when a response schema
 # is set, so this budget is spent on output, not internal reasoning.
 FILTER_MAX_TOKENS = 512
-FILTER_TIMEOUT_S = 15.0
+# 30 s (not 15 s) because this is a vision call -- we upload image
+# bytes, Gemini decodes them, and only then runs the model. 15 s was
+# tight enough that a slow TLS handshake or a cold-start on the API
+# side would time out routinely. The orchestrator's TOTAL_BUDGET_S
+# (120 s) still bounds the worst case.
+FILTER_TIMEOUT_S = 30.0
 DEFAULT_BATCH_CONCURRENCY = 5
 
 
@@ -111,6 +116,15 @@ async def filter_images(
     verdict for the i-th input image. Concurrency is capped so we
     never have more than ``concurrency`` Flash calls in flight at
     once (DESIGN.md Section 7 specifies max-5 for filter).
+
+    Per-image failures (timeout, transport error, malformed JSON) are
+    converted into a ``keep=False`` verdict whose ``reason`` carries
+    the error detail, rather than aborting the whole batch. This
+    matches the orchestrator's intent: we only need ``MIN_KEEPERS``
+    survivors to proceed, and a transient failure on one image should
+    not invalidate the verdicts we already produced for the others.
+    The orchestrator's broaden-and-retry path naturally handles the
+    case where so many images failed that we drop below MIN_KEEPERS.
     """
     if not images:
         return []
@@ -119,7 +133,14 @@ async def filter_images(
 
     async def _run(image: DownloadedImage) -> FilterVerdict:
         async with sem:
-            return await filter_image(image, settings=settings)
+            try:
+                return await filter_image(image, settings=settings)
+            except FilterError as exc:
+                # Demote the per-image failure to a reject verdict so
+                # the surrounding batch can still produce results.
+                return FilterVerdict(
+                    image=image, keep=False, reason=f"filter failed: {exc.detail}"
+                )
 
     # asyncio.gather preserves the order of its arguments, so we get
     # input-aligned output for free.
