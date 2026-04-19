@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -79,6 +80,9 @@ MAX_ASSEMBLY_ATTEMPTS = 2
 # fast than to make the user wait many more minutes for the same
 # eventual failure.
 TOTAL_BUDGET_S = 300.0
+
+log = logging.getLogger(__name__)
+
 
 # ─── Public callback type ──────────────────────────────────────────
 ProgressCallback = Callable[[str, dict[str, Any]], Awaitable[None]]
@@ -197,7 +201,8 @@ async def _run_search(
                 return await search.search_images(
                     q, limit=DEFAULT_IMAGES_PER_QUERY, settings=settings
                 )
-            except search.SearchError:
+            except search.SearchError as exc:
+                log.warning("image search failed for query %r: %s", q, exc)
                 return []
 
     grouped = await asyncio.gather(*(_one(q) for q in queries))
@@ -225,7 +230,8 @@ async def _download_many(images: list[ImageResult]) -> list[DownloadedImage]:
         async with sem:
             try:
                 return await image_store.download_image(img)
-            except ImageDownloadError:
+            except ImageDownloadError as exc:
+                log.warning("image download failed for %s: %s", img.url, exc)
                 return None
 
     results = await asyncio.gather(*(_one(i) for i in images[:MAX_DOWNLOADS]))
@@ -234,19 +240,30 @@ async def _download_many(images: list[ImageResult]) -> list[DownloadedImage]:
 
 async def _ocr_many(
     images: list[DownloadedImage], settings: Settings | None
-) -> list[OcrResult]:
-    """OCR up to :data:`MAX_OCR_INPUTS` images in parallel."""
+) -> tuple[list[OcrResult], list[OcrError]]:
+    """OCR up to :data:`MAX_OCR_INPUTS` images in parallel.
+
+    Returns ``(successful_results, errors)``. Per-image failures are
+    logged at WARNING level (with image URL for context) and collected
+    into ``errors`` so the orchestrator can surface a meaningful
+    failure message when every OCR attempt failed.
+    """
     sem = asyncio.Semaphore(OCR_CONCURRENCY)
 
-    async def _one(img: DownloadedImage) -> OcrResult | None:
+    async def _one(
+        img: DownloadedImage,
+    ) -> tuple[OcrResult | None, OcrError | None]:
         async with sem:
             try:
-                return await vision.extract_text(img, settings=settings)
-            except OcrError:
-                return None
+                return await vision.extract_text(img, settings=settings), None
+            except OcrError as exc:
+                log.warning("OCR failed for %s: %s", img.original.url, exc)
+                return None, exc
 
-    results = await asyncio.gather(*(_one(i) for i in images[:MAX_OCR_INPUTS]))
-    return [r for r in results if r is not None]
+    pairs = await asyncio.gather(*(_one(i) for i in images[:MAX_OCR_INPUTS]))
+    successes = [r for r, _ in pairs if r is not None]
+    errors = [e for _, e in pairs if e is not None]
+    return successes, errors
 
 
 def _ocr_score(result: OcrResult) -> float:
@@ -349,9 +366,17 @@ async def run_generation(
 
         ocr_inputs = [v.image for v in keepers[:MAX_OCR_INPUTS]]
         await _emit("ocr_in_progress", count=len(ocr_inputs))
-        ocrs = await _ocr_many(ocr_inputs, settings)
+        ocrs, ocr_errors = await _ocr_many(ocr_inputs, settings)
         if not ocrs:
-            raise GenerationFailed("ocr", "no OCR result succeeded on any kept image")
+            # Surface the first concrete failure in the user-facing
+            # message so the UI shows e.g. "Vision call failed
+            # (api_error): RESOURCE_EXHAUSTED..." instead of a
+            # generic "no OCR succeeded". All errors are also logged
+            # individually inside _ocr_many.
+            detail = f"all {len(ocr_inputs)} OCR attempt(s) failed"
+            if ocr_errors:
+                detail += f"; first error: {ocr_errors[0].detail}"
+            raise GenerationFailed("ocr", detail)
 
         ocrs_sorted = _sort_ocr_for_assembly(ocrs)
         await _emit("assembling")

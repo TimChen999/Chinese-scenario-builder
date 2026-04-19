@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -26,6 +27,7 @@ from app.agent.types import (
     ScenarioDraft,
     TaskDraft,
 )
+from app.agent.vision import OcrError
 
 # ─── Fake constructors ────────────────────────────────────────────
 
@@ -368,6 +370,49 @@ async def test_total_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert excinfo.value.stage == "timeout"
     assert elapsed < 1.0, f"timeout took {elapsed:.2f}s, expected < 1.0s"
+
+
+@pytest.mark.asyncio
+async def test_ocr_failure_surfaces_first_error(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """When every OCR call fails, the first error reaches the user.
+
+    Regression test: the orchestrator used to swallow each per-image
+    OcrError silently and surface only "no OCR result succeeded on
+    any kept image" -- giving zero diagnostic info. Now it logs
+    every failure at WARNING level (with the image URL) and includes
+    the first error's detail in the GenerationFailed message.
+    """
+    _patch_queries(monkeypatch, ["q1", "q2", "q3"])
+    _patch_search(monkeypatch, [_image_result(f"img{i}") for i in range(3)])
+    _patch_download_all_succeed(monkeypatch)
+    _patch_filter(monkeypatch, lambda img: True)
+
+    call_index = {"n": 0}
+
+    async def fake_ocr(img, *, settings=None):
+        i = call_index["n"]
+        call_index["n"] += 1
+        # Different errors per image so we can verify "first" wins.
+        raise OcrError(f"safety block on image #{i}")
+
+    monkeypatch.setattr(orchestrator.vision, "extract_text", fake_ocr)
+
+    with caplog.at_level(logging.WARNING, logger="app.agent.orchestrator"):
+        with pytest.raises(GenerationFailed) as excinfo:
+            await run_generation("anything")
+
+    assert excinfo.value.stage == "ocr"
+    # Detail must include the count and the *first* error's message.
+    assert "OCR attempt(s) failed" in excinfo.value.detail
+    assert "first error: safety block on image #0" in excinfo.value.detail
+
+    # And every per-image failure should have been logged with its URL.
+    ocr_warnings = [r for r in caplog.records if "OCR failed for" in r.message]
+    assert len(ocr_warnings) == 3
+    assert any("img0.jpg" in r.message for r in ocr_warnings)
 
 
 # Silence noise: unused import in some test branches due to the monkey-patched
