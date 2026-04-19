@@ -99,6 +99,7 @@ async def generate_text(
     temperature: float = 0.2,
     max_output_tokens: int = 4096,
     timeout_s: float = 60.0,
+    thinking_budget: int | None = None,
     client: genai.Client | None = None,
     settings: Settings | None = None,
 ) -> str:
@@ -121,6 +122,14 @@ async def generate_text(
         (DESIGN.md Section 7: 0.2 OCR, 0.7 assembly, 0 filter).
     timeout_s
         Per-call wall-clock cap enforced via :func:`asyncio.wait_for`.
+    thinking_budget
+        Per-call override for Gemini 2.5's "thinking" feature. ``0``
+        disables thinking entirely (recommended for structured-output
+        calls so the entire token budget produces parseable JSON);
+        ``-1`` lets the model decide; a positive int caps thinking
+        tokens. When ``None`` (default), thinking is auto-disabled if
+        ``response_schema`` is supplied -- otherwise the SDK default
+        applies.
     client, settings
         Test injection points. In production, both default to the
         shared cached values.
@@ -149,6 +158,21 @@ async def generate_text(
         config_kwargs["response_schema"] = response_schema
     if system_instruction is not None:
         config_kwargs["system_instruction"] = system_instruction
+
+    # Gemini 2.5 enables internal "thinking" tokens by default, which
+    # are billed against ``max_output_tokens``. For structured-output
+    # calls (``response_schema`` set) we want every token spent on the
+    # JSON we actually parse, so we disable thinking unless the caller
+    # explicitly asked for it. Without this guard, low-budget calls
+    # like the filter (256 tokens) get truncated mid-preamble and the
+    # parse downstream raises ``JSONDecodeError``.
+    effective_thinking_budget = thinking_budget
+    if effective_thinking_budget is None and response_schema is not None:
+        effective_thinking_budget = 0
+    if effective_thinking_budget is not None:
+        config_kwargs["thinking_config"] = types.ThinkingConfig(
+            thinking_budget=effective_thinking_budget
+        )
 
     config = types.GenerateContentConfig(**config_kwargs)
 

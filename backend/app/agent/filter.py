@@ -25,7 +25,12 @@ from app.core.prompts import FILTER_SYSTEM, FILTER_USER
 
 # Generation config for the filter call.
 FILTER_TEMPERATURE = 0.0
-FILTER_MAX_TOKENS = 256
+# 512 (not 256) because gemini-2.5-flash can emit a short preamble
+# even with response_mime_type=application/json; the extra headroom
+# absorbs that without truncating the actual verdict. Thinking is
+# auto-disabled by ``_gemini.generate_text`` when a response schema
+# is set, so this budget is spent on output, not internal reasoning.
+FILTER_MAX_TOKENS = 512
 FILTER_TIMEOUT_S = 15.0
 DEFAULT_BATCH_CONCURRENCY = 5
 
