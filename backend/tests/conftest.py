@@ -34,7 +34,6 @@ from sqlalchemy.pool import StaticPool
 # any test that pre-imported the module still gets these values.
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("GEMINI_API_KEY", "test-gemini-key")
-os.environ.setdefault("SERPAPI_KEY", "test-serpapi-key")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:5173")
 # Sandbox image storage so tests never write into ./data/images. One
 # temp dir for the whole pytest session is fine -- file names are

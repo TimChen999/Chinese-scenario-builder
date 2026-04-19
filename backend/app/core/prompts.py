@@ -142,7 +142,10 @@ RAW_TEXT:
 
 # ─── Search-query generation (orchestrator stage 1) ────────────────
 # Gemini 2.5 Flash. Cheap; 3 queries per call. The orchestrator uses
-# these queries to drive parallel SerpAPI requests.
+# these queries to drive parallel DuckDuckGo image searches (the
+# `ddgs` package), which is keyless. The prompt still mentions
+# "Google Images" because that is the kind of corpus a learner
+# wants the model to imagine, not the actual backend we hit.
 
 SEARCH_QUERIES_SYSTEM = """\
 You help a learner of Mandarin Chinese find authentic real-world reading

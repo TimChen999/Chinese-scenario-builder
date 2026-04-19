@@ -1,6 +1,6 @@
 """Live end-to-end orchestration test.
 
-Runs the full agent pipeline against the real Gemini + SerpAPI
+Runs the full agent pipeline against the real Gemini + DuckDuckGo
 endpoints. Gated by ``RUN_LIVE_TESTS=1``; off by default.
 
 Three prompts (per DESIGN.md Step 6 DoD) cover different scene

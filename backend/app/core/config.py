@@ -2,7 +2,7 @@
 
 Values come from process environment plus an optional `.env` file in
 the backend directory. Never log the resolved settings -- they hold
-secrets (Gemini, SerpAPI). See DESIGN.md Section 12.
+secrets (Gemini). See DESIGN.md Section 12.
 """
 
 from __future__ import annotations
@@ -23,13 +23,15 @@ class Settings(BaseSettings):
 
     Field defaults are chosen to keep local dev frictionless: SQLite
     in `./data/`, image cache alongside it, CORS allowing only the
-    Vite dev origin. The two API keys default to empty strings so the
-    app can boot without them, but the agent layer will raise loudly
-    if it tries to use one that's blank (see ``search.py`` etc.).
+    Vite dev origin. The Gemini API key defaults to empty string so
+    the app can boot without it, but ``_gemini.get_client`` raises
+    loudly if a downstream stage tries to use an unset key.
+
+    Image search uses the keyless DuckDuckGo backend (see
+    ``app/agent/search.py``) so no second credential is required.
     """
 
     GEMINI_API_KEY: str = Field(default="", description="Google Gemini API key")
-    SERPAPI_KEY: str = Field(default="", description="SerpAPI key for Google Images")
 
     DATABASE_URL: str = Field(
         default="sqlite+aiosqlite:///./data/scenarios.db",

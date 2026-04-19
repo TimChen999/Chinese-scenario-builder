@@ -71,7 +71,7 @@ $EnvExample = Join-Path $Root "backend\.env.example"
 if (-not (Test-Path $EnvFile)) {
     if (Test-Path $EnvExample) {
         Copy-Item $EnvExample $EnvFile
-        Write-Warn "Created backend\.env from template. Edit it to add GEMINI_API_KEY and SERPAPI_KEY before generating scenarios."
+        Write-Warn "Created backend\.env from template. Edit it to add GEMINI_API_KEY before generating scenarios (image search uses keyless DuckDuckGo)."
     } else {
         Write-Warn "backend\.env not found and no .env.example to copy from. Generation calls will fail until you create it."
     }

@@ -10,11 +10,21 @@ See [`DESIGN.md`](DESIGN.md) for the full architecture and decision record.
 
 | Component | Stack | Port |
 |---|---|---|
-| Backend  | Python 3.11+, FastAPI, SQLAlchemy 2 (async), SQLite, Gemini, SerpAPI | `8000` |
+| Backend  | Python 3.11+, FastAPI, SQLAlchemy 2 (async), SQLite, Gemini, DuckDuckGo (`ddgs`, keyless) | `8000` |
 | Frontend | React 18, TypeScript 5, Vite 5, Tailwind 3, TanStack Query 5      | `5173` |
 | Extension | Existing **Pinyin Tool** browser extension (untouched)              | n/a    |
 
 The three loosely-coupled systems each own one slice of responsibility (DESIGN.md §1). The app does NOT know the extension exists; the extension does NOT know the app exists. They co-exist in the browser.
+
+> **Divergence from DESIGN.md §3.** The design originally specified
+> SerpAPI for image search (free tier 100/mo, paid $50/mo). The
+> implementation switched to DuckDuckGo via the `ddgs` Python package
+> so the app ships with one secret instead of two -- the Gemini API
+> key is the only required credential. Trade-off: DDG is unofficial
+> (HTML scraping) and occasionally needs `pip install -U ddgs` when
+> they redesign their frontend. See [`backend/app/agent/search.py`](backend/app/agent/search.py)
+> for the implementation; the orchestrator + downstream stages are
+> unchanged because the public `search_images()` contract is preserved.
 
 ---
 
@@ -24,8 +34,8 @@ Double-click [`start.bat`](start.bat). On first run it:
 
 1. Creates the Python venv and installs backend deps (~2 min)
 2. Copies `backend/.env.example` to `backend/.env` (you must edit it
-   to add `GEMINI_API_KEY` and `SERPAPI_KEY` before generating
-   scenarios)
+   to add `GEMINI_API_KEY` before generating scenarios; image search
+   uses keyless DuckDuckGo, no second credential needed)
 3. Applies database migrations
 4. Installs frontend deps (~1 min)
 5. Spawns both servers in their own windows and opens
@@ -43,8 +53,7 @@ drive it yourself.
 
 - **Python 3.11+** (this repo was developed against 3.13). The system `python` may be 3.10; on Windows, prefer the launcher: `py -3.13`.
 - **Node 18+** (developed against `node v24` + `npm 11`).
-- A **Google Gemini API key** (the same one the Pinyin Tool extension uses; one key powers both).
-- A **SerpAPI key** for Google Images search (free tier: 100/mo).
+- A **Google Gemini API key** (the same one the Pinyin Tool extension uses; one key powers both). Image search is keyless via DuckDuckGo.
 
 ---
 
@@ -57,7 +66,7 @@ cd backend
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 copy .env.example .env
-# Edit .env -- fill in GEMINI_API_KEY and SERPAPI_KEY
+# Edit .env -- fill in GEMINI_API_KEY (image search is keyless)
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
@@ -145,7 +154,7 @@ Chinese Scenarios App/
 │       ├── integration/               # 19 tests (API end-to-end with in-memory DB)
 │       ├── live/                      # gated by RUN_LIVE_TESTS=1
 │       └── fixtures/
-│           ├── api_responses/         # SerpAPI / Gemini sample JSON
+│           ├── api_responses/         # DDG / Gemini sample JSON
 │           └── images/                # placeholder JPGs + README
 └── frontend/
     ├── package.json
@@ -226,9 +235,10 @@ Run after each substantive change. Backend on `:8000`, frontend on
   Add a default handler in the test or `tests/mocks/handlers.ts`. We
   use `onUnhandledRequest: "error"` to surface fetch typos.
 
-- **`SearchError: SERPAPI_KEY is not configured`**
-  Confirm `backend/.env` has the key set and the backend has been
-  restarted (pydantic-settings caches the values at first read).
+- **`SearchError: DuckDuckGo image search failed: ...`**
+  DDG occasionally rate-limits, returns a captcha redirect, or
+  changes its HTML. Try again after a minute; if it persists, run
+  `pip install -U ddgs` to pull the latest scraper updates.
 
 - **Pinyin overlay does not appear on raw_content**
   Confirm the Pinyin Tool extension is installed and enabled on
@@ -246,7 +256,6 @@ env var. None are logged by the app.
 | Variable | Required | Default |
 |---|---|---|
 | `GEMINI_API_KEY`     | yes (for any LLM call) | `""` |
-| `SERPAPI_KEY`        | yes (for image search) | `""` |
 | `DATABASE_URL`       | no | `sqlite+aiosqlite:///./data/scenarios.db` |
 | `IMAGE_STORAGE_DIR`  | no | `./data/images` |
 | `ALLOWED_ORIGINS`    | no | `http://localhost:5173` |
