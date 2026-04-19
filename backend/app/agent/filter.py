@@ -31,12 +31,11 @@ FILTER_TEMPERATURE = 0.0
 # auto-disabled by ``_gemini.generate_text`` when a response schema
 # is set, so this budget is spent on output, not internal reasoning.
 FILTER_MAX_TOKENS = 512
-# 30 s (not 15 s) because this is a vision call -- we upload image
-# bytes, Gemini decodes them, and only then runs the model. 15 s was
-# tight enough that a slow TLS handshake or a cold-start on the API
-# side would time out routinely. The orchestrator's TOTAL_BUDGET_S
-# (120 s) still bounds the worst case.
-FILTER_TIMEOUT_S = 30.0
+# 45 s because this is a vision call -- we upload image bytes,
+# Gemini decodes them, and only then runs the model. Generous
+# headroom for slow TLS handshakes, cold starts, or large images.
+# The orchestrator's TOTAL_BUDGET_S still bounds the worst case.
+FILTER_TIMEOUT_S = 45.0
 DEFAULT_BATCH_CONCURRENCY = 5
 
 

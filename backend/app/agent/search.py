@@ -39,7 +39,9 @@ from app.core.config import Settings
 # Per-call timeout enforced by ``asyncio.wait_for`` over the threaded
 # call. ``ddgs`` itself has its own internal HTTP timeouts but they
 # are not always respected for the underlying captcha redirect path.
-DEFAULT_TIMEOUT_S = 15.0
+# 30 s gives DDG enough time to complete a captcha-redirect dance on
+# slow networks without holding the orchestrator hostage.
+DEFAULT_TIMEOUT_S = 30.0
 
 # Over-fetch factor: we ask DDG for ``limit * OVERFETCH`` results and
 # then prune data: URIs / duplicates client-side. Two is enough in

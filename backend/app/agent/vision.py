@@ -37,7 +37,11 @@ MAX_LONGEST_SIDE_PX = 1568
 # Generation config for the OCR call.
 OCR_TEMPERATURE = 0.2
 OCR_MAX_TOKENS = 4096
-OCR_TIMEOUT_S = 60.0
+# 90 s: this is the most expensive call in the pipeline (Gemini Pro,
+# vision, dense Chinese text). Real-world OCR on a busy menu can take
+# 30-60 s end to end; the extra headroom absorbs Pro tail latency
+# without forcing the orchestrator to give up prematurely.
+OCR_TIMEOUT_S = 90.0
 
 
 class OcrError(Exception):

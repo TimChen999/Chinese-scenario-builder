@@ -70,7 +70,15 @@ MAX_OCR_INPUTS = 3
 MIN_KEEPERS = 2
 MAX_FILTER_ATTEMPTS = 2
 MAX_ASSEMBLY_ATTEMPTS = 2
-TOTAL_BUDGET_S = 120.0
+# 300 s (5 min) end-to-end wall clock. Sized to fit one full pass
+# through the pipeline at the per-stage timeouts defined below
+# (filter 45 s + OCR 90 s + assembly 60 s, plus search/download
+# overhead) with comfortable margin. A retry-augmented worst case
+# can still exceed this -- by design: if the network is slow enough
+# that we need a full retry, it is better to surface "too slow"
+# fast than to make the user wait many more minutes for the same
+# eventual failure.
+TOTAL_BUDGET_S = 300.0
 
 # ─── Public callback type ──────────────────────────────────────────
 ProgressCallback = Callable[[str, dict[str, Any]], Awaitable[None]]
@@ -127,7 +135,7 @@ async def _generate_search_queries(
             system_instruction=SEARCH_QUERIES_SYSTEM,
             temperature=0.3,
             max_output_tokens=512,
-            timeout_s=15.0,
+            timeout_s=30.0,
             settings=settings,
         )
         return _QueriesSchema.model_validate(json.loads(text)).queries
@@ -158,7 +166,7 @@ async def _broaden_queries(
             system_instruction=BROADEN_QUERIES_SYSTEM,
             temperature=0.5,
             max_output_tokens=512,
-            timeout_s=15.0,
+            timeout_s=30.0,
             settings=settings,
         )
         return _QueriesSchema.model_validate(json.loads(text)).queries

@@ -34,7 +34,11 @@ from app.core.prompts import ASSEMBLY_SYSTEM, ASSEMBLY_USER
 # Generation config for the assembly call.
 ASSEMBLY_TEMPERATURE = 0.7
 ASSEMBLY_MAX_TOKENS = 4096
-ASSEMBLY_TIMEOUT_S = 30.0
+# 60 s: assembly is a Pro structured-output call producing a multi-task
+# scenario. The token volume is large enough that streaming-back time
+# alone can exceed 30 s under load, even when first-token latency is
+# fine.
+ASSEMBLY_TIMEOUT_S = 60.0
 
 
 class AssemblyError(Exception):
