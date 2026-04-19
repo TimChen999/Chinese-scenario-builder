@@ -57,7 +57,7 @@ class _CapturingClient:
 
 @pytest.mark.asyncio
 async def test_thinking_disabled_by_default_when_response_schema_set() -> None:
-    """A call with ``response_schema`` auto-disables thinking.
+    """A Flash call with ``response_schema`` auto-disables thinking.
 
     This is the regression test for the filter-truncation bug:
     Gemini 2.5 Flash burns the (tiny) token budget on internal
@@ -75,6 +75,44 @@ async def test_thinking_disabled_by_default_when_response_schema_set() -> None:
 
     assert text == '{"ok": true}'
     assert client.last_config is not None
+    assert client.last_config.thinking_config is not None
+    assert client.last_config.thinking_config.thinking_budget == 0
+
+
+@pytest.mark.asyncio
+async def test_thinking_left_alone_for_pro_with_response_schema() -> None:
+    """Pro must NOT have thinking auto-disabled.
+
+    Regression test: gemini-2.5-pro rejects ``thinking_budget=0`` with
+    ``INVALID_ARGUMENT: This model only works in thinking mode.`` The
+    earlier auto-disable was unconditional and broke every Pro call
+    that used a response_schema (i.e. every OCR + assembly call).
+    Auto-disable must be Flash-only.
+    """
+    client = _CapturingClient()
+
+    await _gemini.generate_text(
+        model=_gemini.MODEL_PRO,
+        contents=["hi"],
+        response_schema=_DummySchema,
+        client=client,
+    )
+
+    assert client.last_config.thinking_config is None
+
+
+@pytest.mark.asyncio
+async def test_thinking_disabled_for_flash_lite_with_response_schema() -> None:
+    """Flash-Lite is also a Flash variant and gets the auto-disable."""
+    client = _CapturingClient()
+
+    await _gemini.generate_text(
+        model=_gemini.MODEL_FLASH_LITE,
+        contents=["hi"],
+        response_schema=_DummySchema,
+        client=client,
+    )
+
     assert client.last_config.thinking_config is not None
     assert client.last_config.thinking_config.thinking_budget == 0
 

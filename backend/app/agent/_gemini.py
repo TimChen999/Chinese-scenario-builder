@@ -125,11 +125,12 @@ async def generate_text(
     thinking_budget
         Per-call override for Gemini 2.5's "thinking" feature. ``0``
         disables thinking entirely (recommended for structured-output
-        calls so the entire token budget produces parseable JSON);
-        ``-1`` lets the model decide; a positive int caps thinking
-        tokens. When ``None`` (default), thinking is auto-disabled if
-        ``response_schema`` is supplied -- otherwise the SDK default
-        applies.
+        Flash calls so the entire token budget produces parseable
+        JSON); ``-1`` lets the model decide; a positive int caps
+        thinking tokens. When ``None`` (default), thinking is
+        auto-disabled only for Flash models with a ``response_schema``
+        set -- Pro models require thinking mode and would 400 with
+        ``thinking_budget=0`` -- otherwise the SDK default applies.
     client, settings
         Test injection points. In production, both default to the
         shared cached values.
@@ -161,13 +162,21 @@ async def generate_text(
 
     # Gemini 2.5 enables internal "thinking" tokens by default, which
     # are billed against ``max_output_tokens``. For structured-output
-    # calls (``response_schema`` set) we want every token spent on the
-    # JSON we actually parse, so we disable thinking unless the caller
-    # explicitly asked for it. Without this guard, low-budget calls
-    # like the filter (256 tokens) get truncated mid-preamble and the
-    # parse downstream raises ``JSONDecodeError``.
+    # calls (``response_schema`` set) on cheap models we want every
+    # token spent on the JSON we actually parse, so we disable
+    # thinking. Without this guard, low-budget Flash calls (e.g. the
+    # filter at 512 tokens) get truncated mid-preamble.
+    #
+    # Pro models REQUIRE thinking mode and reject ``thinking_budget=0``
+    # with ``INVALID_ARGUMENT``, so we only auto-disable for Flash
+    # variants. Callers can still force a specific budget via the
+    # explicit ``thinking_budget`` parameter on any model.
     effective_thinking_budget = thinking_budget
-    if effective_thinking_budget is None and response_schema is not None:
+    if (
+        effective_thinking_budget is None
+        and response_schema is not None
+        and "flash" in model.lower()
+    ):
         effective_thinking_budget = 0
     if effective_thinking_budget is not None:
         config_kwargs["thinking_config"] = types.ThinkingConfig(
