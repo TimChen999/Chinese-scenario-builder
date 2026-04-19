@@ -30,18 +30,15 @@ const SCENE_HINTS = [
   { value: "map", label: "Map" },
 ];
 
-const FORMAT_HINTS = [
-  { value: "", label: "Any" },
-  { value: "handwritten", label: "Handwritten" },
-  { value: "printed", label: "Printed" },
-  { value: "digital", label: "Digital" },
-];
+// Note: the backend still accepts an optional `format_hint`, but we
+// no longer expose it in the UI -- it only flowed into the assembly
+// LLM (one adjective in scene_setup) and was always conveyable via
+// the prompt itself. Removed from the form to keep the surface small.
 
 export default function GeneratePage() {
   const [prompt, setPrompt] = useState("");
   const [sceneHint, setSceneHint] = useState("");
   const [region, setRegion] = useState("");
-  const [formatHint, setFormatHint] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
 
@@ -69,7 +66,6 @@ export default function GeneratePage() {
         prompt: prompt.trim(),
         scene_hint: sceneHint || undefined,
         region: region.trim() || undefined,
-        format_hint: formatHint || undefined,
       });
       setJobId(response.job_id);
     } catch {
@@ -116,7 +112,7 @@ export default function GeneratePage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="block font-medium text-slate-700">Scene type</span>
               <select
@@ -143,22 +139,6 @@ export default function GeneratePage() {
                 placeholder="Beijing"
                 className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
               />
-            </label>
-
-            <label className="block text-sm">
-              <span className="block font-medium text-slate-700">Format</span>
-              <select
-                name="format_hint"
-                value={formatHint}
-                onChange={(e) => setFormatHint(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5"
-              >
-                {FORMAT_HINTS.map((h) => (
-                  <option key={h.label} value={h.value}>
-                    {h.label}
-                  </option>
-                ))}
-              </select>
             </label>
           </div>
 
