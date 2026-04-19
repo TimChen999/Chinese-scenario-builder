@@ -1,0 +1,123 @@
+{
+  "search_metadata": {
+    "id": "test-fixture-001",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/test-fixture-001/test-fixture-001.json",
+    "created_at": "2026-04-18 10:00:00 UTC",
+    "google_images_url": "https://www.google.com/search?q=%E5%8C%97%E4%BA%AC%E6%97%A9%E9%A4%90%E5%AE%9E%E6%8B%8D%E8%8F%9C%E5%8D%95"
+  },
+  "search_parameters": {
+    "engine": "google_images",
+    "q": "北京 早餐 实拍 菜单",
+    "google_domain": "google.com",
+    "device": "desktop",
+    "ijn": "0"
+  },
+  "search_information": {
+    "image_results_state": "Results for exact spelling"
+  },
+  "images_results": [
+    {
+      "position": 1,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture001",
+      "source": "dianping.com",
+      "source_logo": "https://serpapi.com/logos/dianping.png",
+      "title": "北京老字号早餐店菜单实拍",
+      "link": "https://www.dianping.com/shop/G1A1A1A1",
+      "original": "https://img.dianping.com/menu/old-beijing-breakfast-1.jpg",
+      "original_width": 1200,
+      "original_height": 1600,
+      "is_product": false
+    },
+    {
+      "position": 2,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture002",
+      "source": "weibo.com",
+      "title": "北京胡同早餐 豆浆油条菜单",
+      "link": "https://weibo.com/photo/4567890",
+      "original": "https://wx1.sinaimg.cn/large/breakfast-menu-2.jpg",
+      "original_width": 1080,
+      "original_height": 1440
+    },
+    {
+      "position": 3,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture003",
+      "source": "xiaohongshu.com",
+      "title": "北京早餐摊菜单价格表",
+      "link": "https://www.xiaohongshu.com/explore/abc123",
+      "original": "https://sns-img-bd.xhscdn.com/breakfast-3.jpg",
+      "original_width": 960,
+      "original_height": 1280
+    },
+    {
+      "position": 4,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture004",
+      "source": "meituan.com",
+      "title": "北京早点店菜单 包子豆浆油条",
+      "link": "https://www.meituan.com/poi/789",
+      "original": "https://p0.meituan.net/menu/breakfast-shop-4.jpg",
+      "original_width": 1500,
+      "original_height": 2000
+    },
+    {
+      "position": 5,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture005",
+      "source": "zhihu.com",
+      "title": "北京早餐文化 菜单合集",
+      "link": "https://zhuanlan.zhihu.com/p/1234567",
+      "original": "https://pic.zhimg.com/breakfast-menu-5.jpg",
+      "original_width": 800,
+      "original_height": 600
+    },
+    {
+      "position": 6,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture006",
+      "source": "douyin.com",
+      "title": "北京老北京早餐 菜单实拍视频截图",
+      "link": "https://www.douyin.com/video/9988776",
+      "original": "https://p3-pc-sign.douyinpic.com/breakfast-6.jpg",
+      "original_width": 720,
+      "original_height": 1280
+    },
+    {
+      "position": 7,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture007",
+      "source": "ctrip.com",
+      "title": "北京 早餐推荐 菜单价格",
+      "link": "https://you.ctrip.com/sight/beijing/breakfast",
+      "original": "https://dimg04.c-ctrip.com/menu/breakfast-7.jpg",
+      "original_width": 1024,
+      "original_height": 768
+    },
+    {
+      "position": 8,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture008",
+      "source": "mafengwo.cn",
+      "title": "北京胡同早餐店实拍 菜单",
+      "link": "https://www.mafengwo.cn/i/breakfast",
+      "original": "https://b1-q.mafengwo.net/menu-8.jpg",
+      "original_width": 1280,
+      "original_height": 960
+    },
+    {
+      "position": 9,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture009",
+      "source": "sohu.com",
+      "title": "北京早餐文化深度报道 菜单图片",
+      "link": "https://www.sohu.com/a/breakfast-9",
+      "original": "https://p1.itc.cn/breakfast-menu-9.jpg",
+      "original_width": 1600,
+      "original_height": 1200
+    },
+    {
+      "position": 10,
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:fixture010",
+      "source": "ifeng.com",
+      "title": "北京早点摊 老味道菜单",
+      "link": "https://news.ifeng.com/breakfast-10",
+      "original": "https://x0.ifengimg.com/breakfast-10.jpg",
+      "original_width": 900,
+      "original_height": 1200
+    }
+  ]
+}

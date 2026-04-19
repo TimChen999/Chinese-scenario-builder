@@ -1,0 +1,121 @@
+"""Image quality filter: cheap binary keep/reject before vision OCR.
+
+Pipeline position (DESIGN.md Section 7): runs after image search +
+download, before OCR. The OCR step is by far the most expensive in
+the pipeline, so a fast Flash-tier verdict on each candidate keeps
+costs down by a large factor.
+
+Prompt strategy: a one-shot system instruction enumerates four
+criteria (real photo / Chinese text present / legible / authentic
+context) and asks for ``{keep, reason}``. Temperature is 0: this is
+a deterministic decision, no creativity wanted.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+
+from pydantic import BaseModel, Field, ValidationError
+
+from app.agent import _gemini
+from app.agent.types import DownloadedImage, FilterVerdict
+from app.core.config import Settings
+from app.core.prompts import FILTER_SYSTEM, FILTER_USER
+
+# Generation config for the filter call.
+FILTER_TEMPERATURE = 0.0
+FILTER_MAX_TOKENS = 256
+FILTER_TIMEOUT_S = 15.0
+DEFAULT_BATCH_CONCURRENCY = 5
+
+
+class FilterError(Exception):
+    """Raised when the filter call returns an unusable response."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class FilterResponseSchema(BaseModel):
+    """Pydantic mirror of the keep/reject JSON shape."""
+
+    keep: bool = Field(..., description="True if the image should be OCR'd")
+    reason: str = Field(..., description="One-sentence explanation, surfaced in logs")
+
+
+async def filter_image(
+    image: DownloadedImage,
+    *,
+    settings: Settings | None = None,
+) -> FilterVerdict:
+    """Ask Gemini Flash whether ``image`` is worth OCRing.
+
+    Returns a :class:`FilterVerdict` whose ``keep`` field drives the
+    orchestrator's decision; ``reason`` is surfaced in logs / SSE
+    progress events so the user understands rejections.
+
+    Raises
+    ------
+    FilterError
+        On invalid JSON, schema mismatch, or any wrapped Gemini
+        failure (timeout, transport, missing key).
+    """
+    contents = [
+        FILTER_USER,
+        _gemini.make_image_part(image.bytes_, image.mime),
+    ]
+
+    try:
+        text = await _gemini.generate_text(
+            model=_gemini.MODEL_FLASH,
+            contents=contents,
+            response_schema=FilterResponseSchema,
+            system_instruction=FILTER_SYSTEM,
+            temperature=FILTER_TEMPERATURE,
+            max_output_tokens=FILTER_MAX_TOKENS,
+            timeout_s=FILTER_TIMEOUT_S,
+            settings=settings,
+        )
+    except _gemini.GeminiError as exc:
+        raise FilterError(f"Filter call failed ({exc.code}): {exc.message}") from exc
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise FilterError(f"Filter response was not valid JSON: {text[:200]}") from exc
+
+    try:
+        parsed = FilterResponseSchema.model_validate(data)
+    except ValidationError as exc:
+        raise FilterError(f"Filter response did not match schema: {exc}") from exc
+
+    return FilterVerdict(image=image, keep=parsed.keep, reason=parsed.reason)
+
+
+async def filter_images(
+    images: list[DownloadedImage],
+    *,
+    concurrency: int = DEFAULT_BATCH_CONCURRENCY,
+    settings: Settings | None = None,
+) -> list[FilterVerdict]:
+    """Run :func:`filter_image` over a list with bounded parallelism.
+
+    Order-preserving: the i-th element of the returned list is the
+    verdict for the i-th input image. Concurrency is capped so we
+    never have more than ``concurrency`` Flash calls in flight at
+    once (DESIGN.md Section 7 specifies max-5 for filter).
+    """
+    if not images:
+        return []
+
+    sem = asyncio.Semaphore(concurrency)
+
+    async def _run(image: DownloadedImage) -> FilterVerdict:
+        async with sem:
+            return await filter_image(image, settings=settings)
+
+    # asyncio.gather preserves the order of its arguments, so we get
+    # input-aligned output for free.
+    return list(await asyncio.gather(*(_run(img) for img in images)))

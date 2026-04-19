@@ -1,0 +1,23 @@
+# Backend
+backend/.env
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.mypy_cache/
+backend/data/
+backend/*.egg-info/
+backend/**/*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store

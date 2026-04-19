@@ -1,0 +1,28 @@
+/*
+ * Global stylesheet -- only Tailwind directives + a few base rules.
+ *
+ * IMPORTANT (DESIGN.md Section 9): we MUST NOT define any class
+ * starting with `hg-` to avoid colliding with the Pinyin Tool
+ * extension's Shadow-DOM-injected overlay styles. All scenarios-app
+ * classes use the `scenario-` prefix or Tailwind utilities.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/*
+ * Default font for any element holding Chinese content. Pages set
+ * lang="zh" + class="font-cjk" on raw_content / scene_setup nodes
+ * so the OS picks the best CJK glyph fallback.
+ */
+.font-cjk {
+  font-family:
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Source Han Sans CN", system-ui, sans-serif;
+}

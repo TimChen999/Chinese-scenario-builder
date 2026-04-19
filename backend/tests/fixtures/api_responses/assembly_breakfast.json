@@ -1,0 +1,26 @@
+{
+  "scene_setup": "你刚走进一家老北京早餐店,服务员递给你一份手写的菜单。你想点一份热的豆浆和一根油条作早餐。",
+  "tasks": [
+    {
+      "prompt": "What is the cheapest item on the menu?",
+      "answer_type": "exact",
+      "expected_answer": "油条",
+      "acceptable_answers": ["油条", "youtiao", "Youtiao", "you tiao"],
+      "explanation": "油条 (yóutiáo) is 2元, the cheapest item. 豆浆 is 3元 and 包子(肉) is 4元."
+    },
+    {
+      "prompt": "How much do 豆浆 and 油条 cost together (in 元)?",
+      "answer_type": "numeric",
+      "expected_answer": "5",
+      "acceptable_answers": ["5", "5元", "5 yuan", "five"],
+      "explanation": "豆浆 3元 + 油条 2元 = 5元."
+    },
+    {
+      "prompt": "Which item costs 4 元?",
+      "answer_type": "exact",
+      "expected_answer": "包子(肉)",
+      "acceptable_answers": ["包子(肉)", "肉包子", "肉包", "meat baozi"],
+      "explanation": "The menu lists 包子(肉) at 4元. The vegetarian 包子(素) is 3元."
+    }
+  ]
+}
