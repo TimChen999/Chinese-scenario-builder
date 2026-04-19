@@ -18,6 +18,27 @@ The three loosely-coupled systems each own one slice of responsibility (DESIGN.m
 
 ---
 
+## Quick start (one click)
+
+Double-click [`start.bat`](start.bat). On first run it:
+
+1. Creates the Python venv and installs backend deps (~2 min)
+2. Copies `backend/.env.example` to `backend/.env` (you must edit it
+   to add `GEMINI_API_KEY` and `SERPAPI_KEY` before generating
+   scenarios)
+3. Applies database migrations
+4. Installs frontend deps (~1 min)
+5. Spawns both servers in their own windows and opens
+   [http://localhost:5173](http://localhost:5173)
+
+Subsequent launches skip every bootstrap step that's already done
+(typical launch < 5 s). Stop each server with `Ctrl+C` in its window.
+
+The manual setup steps below are still available if you'd rather
+drive it yourself.
+
+---
+
 ## Prerequisites
 
 - **Python 3.11+** (this repo was developed against 3.13). The system `python` may be 3.10; on Windows, prefer the launcher: `py -3.13`.
